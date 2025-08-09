@@ -1,0 +1,12 @@
+[package]
+name = "send-to-goodnotes"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+iced = { version = "0.13.1", features = ["wgpu", "tokio"] }
+lettre = "0.11.18"
+rfd = "0.15.4"
+thiserror = "2.0.12"
+dotenvy = "0.15"
+dotenvy_macro = "0.15"
