@@ -1,9 +1,10 @@
 use iced::widget::{button, column, row, scrollable, text, text_input};
 use iced::{Color, Length};
 
+use super::widgets::OutsideCommit;
 use super::{AppState, Message};
 
-pub fn view(state: &AppState) -> iced::widget::Column<'_, Message> {
+pub fn view(state: &AppState) -> iced::Element<'_, Message> {
     // List of selected files (or placeholder text)
     let files_column = if state.selected_files.is_empty() {
         column![text("No PDF files selected")]
@@ -134,7 +135,20 @@ pub fn view(state: &AppState) -> iced::widget::Column<'_, Message> {
     } else {
         text("")
     };
-    column![file_list, status_row, row![open_btn, send_btn].spacing(16)]
+    let content = column![file_list, status_row, row![open_btn, send_btn].spacing(16)]
         .spacing(12)
-        .padding(16)
+        .padding(16);
+
+    // Wrap with OutsideCommit so clicks outside will commit edit
+    let editing_active = state.editing_index.is_some();
+    OutsideCommit::new(
+        content.into(),
+        editing_active,
+        if editing_active {
+            Some(Message::CommitEdit)
+        } else {
+            None
+        },
+    )
+    .into()
 }

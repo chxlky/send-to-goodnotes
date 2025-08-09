@@ -144,6 +144,6 @@ fn default_display_name(p: &Path) -> String {
         .to_string()
 }
 
-fn view(state: &AppState) -> iced::widget::Column<'_, Message> {
+fn view(state: &AppState) -> iced::Element<'_, Message> {
     app::view(state)
 }
