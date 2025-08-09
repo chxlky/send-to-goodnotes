@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod app;
 mod email;
 
@@ -32,10 +34,13 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                             == Some("pdf".into())
                     })
                     .collect();
+
                 new_files.retain(|f| !state.selected_files.iter().any(|e| e == f));
+
                 for f in &new_files {
                     state.file_names.push(default_display_name(f));
                 }
+
                 state.selected_files.extend(new_files);
             }
             Task::none()
@@ -44,6 +49,7 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
             if state.sending {
                 return Task::none();
             }
+
             if state.selected_files.len() > 5 {
                 state.status = Some(format!(
                     "Too many attachments: {} (max 5)",
@@ -51,17 +57,21 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                 ));
                 return Task::none();
             }
+
             if let Some(i) = state.editing_index.take() {
                 commit_edit(state, i);
             }
+
             state.sending = true;
             state.status = Some("Sending...".into());
+
             let files_with_names: Vec<(PathBuf, String)> = state
                 .selected_files
                 .iter()
                 .cloned()
                 .zip(state.file_names.clone())
                 .collect();
+
             Task::perform(
                 async move { email::send_pdfs(files_with_names).map_err(|e| e.to_string()) },
                 Message::Sent,
@@ -73,16 +83,19 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                 Ok(c) => format!("Sent {} attachment(s)", c),
                 Err(e) => format!("Error: {}", e),
             });
+
             Task::none()
         }
         Message::Remove(path) => {
             if let Some(idx) = state.selected_files.iter().position(|p| p == &path) {
                 state.selected_files.remove(idx);
                 state.file_names.remove(idx);
+
                 if matches!(state.editing_index, Some(ei) if ei == idx) {
                     state.editing_index = None;
                 }
             }
+
             Task::none()
         }
         Message::EditName(i) => {
@@ -90,11 +103,15 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                 if let Some(prev) = state.editing_index.take() {
                     commit_edit(state, prev);
                 }
+
                 state.editing_index = Some(i);
+
                 let mut base = state.file_names[i].clone();
-                if base.len() >= 4 && base[base.len() - 4..].eq_ignore_ascii_case(".pdf") {
+                let has_pdf_extension = base[base.len() - 4..].eq_ignore_ascii_case(".pdf");
+                if base.len() >= 4 && has_pdf_extension {
                     base.truncate(base.len() - 4);
                 }
+
                 state.editing_buffer = base;
             }
             Task::none()
@@ -104,6 +121,7 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
             if v.len() >= 4 && v[v.len() - 4..].eq_ignore_ascii_case(".pdf") {
                 v.truncate(v.len() - 4);
             }
+
             state.editing_buffer = v;
             Task::none()
         }
@@ -111,11 +129,13 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
             if let Some(i) = state.editing_index.take() {
                 commit_edit(state, i);
             }
+
             Task::none()
         }
         Message::CancelEdit => {
             state.editing_index = None;
             state.editing_buffer.clear();
+
             Task::none()
         }
     }
@@ -124,16 +144,19 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
 fn commit_edit(state: &mut AppState, index: usize) {
     if index < state.file_names.len() {
         let trimmed = state.editing_buffer.trim();
+
         if !trimmed.is_empty() {
             let mut final_name = trimmed.to_string();
-            if !(final_name.len() >= 4
-                && final_name[final_name.len() - 4..].eq_ignore_ascii_case(".pdf"))
-            {
+
+            let has_pdf_extension = final_name[final_name.len() - 4..].eq_ignore_ascii_case(".pdf");
+            if !(final_name.len() >= 4 && has_pdf_extension) {
                 final_name.push_str(".pdf");
             }
+
             state.file_names[index] = final_name;
         }
     }
+
     state.editing_buffer.clear();
 }
 

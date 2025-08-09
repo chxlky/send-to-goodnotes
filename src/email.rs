@@ -33,13 +33,11 @@ pub fn send_pdfs(files: Vec<(PathBuf, String)>) -> Result<usize, EmailError> {
     let smtp_port: &str = dotenv!("SMTP_PORT");
     let from_addr: &str = dotenv!("FROM_EMAIL");
     let to_addr: &str = dotenv!("TO_EMAIL");
-    // Remove spaces Google inserts in app passwords for readability
     let app_password: String = dotenv!("APP_PASSWORD").replace(' ', "");
 
     let creds = Credentials::new(from_addr.to_string(), app_password);
 
     let port_num: u16 = smtp_port.parse::<u16>().unwrap_or(587);
-
     let mailer = if port_num == 465 {
         SmtpTransport::relay(smtp_host)?
             .port(465)
@@ -62,12 +60,13 @@ pub fn send_pdfs(files: Vec<(PathBuf, String)>) -> Result<usize, EmailError> {
     } else {
         for (path, display_name) in &files {
             let data = std::fs::read(path).map_err(EmailError::from)?;
-            // Ensure a .pdf extension if user removed it
+
             let final_name = if !display_name.to_lowercase().ends_with(".pdf") {
                 format!("{display_name}.pdf")
             } else {
                 display_name.clone()
             };
+
             parts.push(
                 Attachment::new(final_name)
                     .body(data, ContentType::parse("application/pdf").unwrap()),

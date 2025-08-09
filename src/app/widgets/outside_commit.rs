@@ -42,6 +42,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
         if tree.children.is_empty() {
             tree.children.push(Tree::new(&self.content));
         }
+
         self.content
             .as_widget()
             .layout(&mut tree.children[0], renderer, limits)
@@ -57,6 +58,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
         if tree.children.is_empty() {
             tree.children.push(Tree::new(&self.content));
         }
+
         self.content
             .as_widget()
             .operate(&mut tree.children[0], layout, renderer, operation);
@@ -76,6 +78,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
         if tree.children.is_empty() {
             tree.children.push(Tree::new(&self.content));
         }
+
         let status = self.content.as_widget_mut().on_event(
             &mut tree.children[0],
             event.clone(),
@@ -86,6 +89,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
             shell,
             viewport,
         );
+
         if let Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event
             && self.editing
             && matches!(status, event::Status::Ignored)
@@ -94,6 +98,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
             shell.publish(msg);
             return event::Status::Captured;
         }
+
         status
     }
 
@@ -110,6 +115,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
         if tree.children.is_empty() {
             return;
         }
+
         self.content.as_widget().draw(
             &tree.children[0],
             renderer,
@@ -132,6 +138,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
         if tree.children.is_empty() {
             return mouse::Interaction::Idle;
         }
+        
         self.content.as_widget().mouse_interaction(
             &tree.children[0],
             layout,
