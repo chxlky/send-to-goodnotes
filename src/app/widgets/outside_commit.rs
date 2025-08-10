@@ -138,7 +138,7 @@ impl<'a, M: Clone + 'a> Widget<M, iced::Theme, iced::Renderer> for OutsideCommit
         if tree.children.is_empty() {
             return mouse::Interaction::Idle;
         }
-        
+
         self.content.as_widget().mouse_interaction(
             &tree.children[0],
             layout,

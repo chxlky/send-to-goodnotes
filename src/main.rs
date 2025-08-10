@@ -123,8 +123,7 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                 state.editing_index = Some(i);
 
                 let mut base = state.file_names[i].clone();
-                let has_pdf_extension = base[base.len() - 4..].eq_ignore_ascii_case(".pdf");
-                if base.len() >= 4 && has_pdf_extension {
+                if base.len() >= 4 && base[base.len() - 4..].eq_ignore_ascii_case(".pdf") {
                     base.truncate(base.len() - 4);
                 }
 
@@ -223,8 +222,9 @@ fn commit_edit(state: &mut AppState, index: usize) {
         if !trimmed.is_empty() {
             let mut final_name = trimmed.to_string();
 
-            let has_pdf_extension = final_name[final_name.len() - 4..].eq_ignore_ascii_case(".pdf");
-            if !(final_name.len() >= 4 && has_pdf_extension) {
+            let has_pdf_extension = final_name.len() >= 4
+                && final_name[final_name.len() - 4..].eq_ignore_ascii_case(".pdf");
+            if !has_pdf_extension {
                 final_name.push_str(".pdf");
             }
 
