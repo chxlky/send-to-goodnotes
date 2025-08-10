@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod config;
 mod email;
 
 use app::{AppState, Message};
@@ -11,7 +12,21 @@ pub fn main() -> IcedResult {
     iced::application("Send to Goodnotes", update, view)
         .centered()
         .window_size(Size::new(800.0, 600.0))
-        .run()
+        .run_with(|| {
+            let mut state = AppState::default();
+
+            // Initialize config manager and load settings
+            let config_manager = config::ConfigManager::new().ok();
+            #[allow(clippy::collapsible_if)]
+            if let Some(ref manager) = config_manager {
+                if let Ok(settings) = manager.load_settings() {
+                    state.settings = settings;
+                }
+            }
+            state.config_manager = config_manager;
+
+            (state, Task::none())
+        })
 }
 
 fn update(state: &mut AppState, message: Message) -> Task<Message> {
@@ -72,8 +87,9 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                 .zip(state.file_names.clone())
                 .collect();
 
+            let settings = state.settings.clone();
             Task::perform(
-                async move { email::send_pdfs(files_with_names).map_err(|e| e.to_string()) },
+                async move { email::send_pdfs(files_with_names, &settings).map_err(|e| e.to_string()) },
                 Message::Sent,
             )
         }
@@ -136,6 +152,64 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
             state.editing_index = None;
             state.editing_buffer.clear();
 
+            Task::none()
+        }
+        Message::OpenSettings => {
+            state.show_settings = true;
+            Task::none()
+        }
+        Message::CloseSettings => {
+            state.show_settings = false;
+            Task::none()
+        }
+        Message::SmtpHostChanged(value) => {
+            state.settings.smtp_host = value;
+            state.settings_changed = true;
+            Task::none()
+        }
+        Message::SmtpPortChanged(value) => {
+            state.settings.smtp_port = value;
+            state.settings_changed = true;
+            Task::none()
+        }
+        Message::FromEmailChanged(value) => {
+            state.settings.from_email = value;
+            state.settings_changed = true;
+            Task::none()
+        }
+        Message::ToEmailChanged(value) => {
+            state.settings.to_email = value;
+            state.settings_changed = true;
+            Task::none()
+        }
+        Message::AppPasswordChanged(value) => {
+            state.settings.app_password = value;
+            state.settings_changed = true;
+            Task::none()
+        }
+        Message::SaveSettings => {
+            let settings = state.settings.clone();
+            Task::perform(
+                async move {
+                    if let Ok(manager) = config::ConfigManager::new() {
+                        manager.save_settings(&settings).map_err(|e| e.to_string())
+                    } else {
+                        Err("Failed to create config manager".to_string())
+                    }
+                },
+                Message::SettingsSaved,
+            )
+        }
+        Message::SettingsSaved(result) => {
+            match result {
+                Ok(()) => {
+                    state.status = Some("Settings saved successfully".to_string());
+                    state.settings_changed = false;
+                }
+                Err(e) => {
+                    state.status = Some(format!("Error saving settings: {}", e));
+                }
+            }
             Task::none()
         }
     }

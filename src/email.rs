@@ -1,4 +1,3 @@
-use dotenvy_macro::dotenv;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -8,12 +7,12 @@ use lettre::message::{Attachment, Message, MultiPart, SinglePart};
 use lettre::transport::smtp::SmtpTransport;
 use lettre::transport::smtp::authentication::Credentials;
 
+use crate::config::EmailSettings;
+
 #[derive(Debug, Error)]
 pub enum EmailError {
     #[error("too many attachments: {0}, max is 5")]
     TooManyAttachments(usize),
-    #[error(transparent)]
-    EnvVar(#[from] std::env::VarError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -22,31 +21,46 @@ pub enum EmailError {
     Smtp(#[from] lettre::transport::smtp::Error),
     #[error("invalid address: {0}")]
     Addr(String),
+    #[error("invalid port number: {0}")]
+    InvalidPort(String),
+    #[error("settings not configured properly")]
+    IncompleteSettings,
 }
 
-pub fn send_pdfs(files: Vec<(PathBuf, String)>) -> Result<usize, EmailError> {
+pub fn send_pdfs(
+    files: Vec<(PathBuf, String)>,
+    settings: &EmailSettings,
+) -> Result<usize, EmailError> {
     if files.len() > 5 {
         return Err(EmailError::TooManyAttachments(files.len()));
     }
 
-    let smtp_host: &str = dotenv!("SMTP_HOST");
-    let smtp_port: &str = dotenv!("SMTP_PORT");
-    let from_addr: &str = dotenv!("FROM_EMAIL");
-    let to_addr: &str = dotenv!("TO_EMAIL");
-    let app_password: String = dotenv!("APP_PASSWORD").replace(' ', "");
+    // Validate settings
+    if settings.smtp_host.is_empty()
+        || settings.from_email.is_empty()
+        || settings.to_email.is_empty()
+        || settings.app_password.is_empty()
+    {
+        return Err(EmailError::IncompleteSettings);
+    }
 
-    let creds = Credentials::new(from_addr.to_string(), app_password);
+    let app_password = settings.app_password.replace(' ', "");
+    let creds = Credentials::new(settings.from_email.clone(), app_password);
 
-    let port_num: u16 = smtp_port.parse::<u16>().unwrap_or(587);
+    let port_num: u16 = settings
+        .smtp_port
+        .parse()
+        .map_err(|_| EmailError::InvalidPort(settings.smtp_port.clone()))?;
+
     let mailer = if port_num == 465 {
-        SmtpTransport::relay(smtp_host)?
+        SmtpTransport::relay(&settings.smtp_host)?
             .port(465)
-            .credentials(creds.clone())
+            .credentials(creds)
             .build()
     } else {
-        SmtpTransport::starttls_relay(smtp_host)?
+        SmtpTransport::starttls_relay(&settings.smtp_host)?
             .port(port_num)
-            .credentials(creds.clone())
+            .credentials(creds)
             .build()
     };
 
@@ -59,7 +73,7 @@ pub fn send_pdfs(files: Vec<(PathBuf, String)>) -> Result<usize, EmailError> {
         );
     } else {
         for (path, display_name) in &files {
-            let data = std::fs::read(path).map_err(EmailError::from)?;
+            let data = std::fs::read(path)?;
 
             let final_name = if !display_name.to_lowercase().ends_with(".pdf") {
                 format!("{display_name}.pdf")
@@ -83,16 +97,17 @@ pub fn send_pdfs(files: Vec<(PathBuf, String)>) -> Result<usize, EmailError> {
 
     let email = Message::builder()
         .from(
-            from_addr
+            settings
+                .from_email
                 .parse::<lettre::message::Mailbox>()
                 .map_err(|e| EmailError::Addr(e.to_string()))?,
         )
-        .to(to_addr
+        .to(settings
+            .to_email
             .parse::<lettre::message::Mailbox>()
             .map_err(|e| EmailError::Addr(e.to_string()))?)
         .subject("PDF files")
-        .multipart(mixed)
-        .map_err(EmailError::from)?;
+        .multipart(mixed)?;
 
     match mailer.send(&email) {
         Ok(resp) => {
