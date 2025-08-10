@@ -205,6 +205,7 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
                 Ok(()) => {
                     state.status = Some("Settings saved successfully".to_string());
                     state.settings_changed = false;
+                    state.show_settings = false; // Go back to main page
                 }
                 Err(e) => {
                     state.status = Some(format!("Error saving settings: {}", e));
