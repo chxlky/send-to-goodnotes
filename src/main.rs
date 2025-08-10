@@ -5,13 +5,14 @@ mod config;
 mod email;
 
 use app::{AppState, Message};
-use iced::{Result as IcedResult, Size, Task};
+use iced::{Event, Result as IcedResult, Size, Subscription, Task, window};
 use std::path::{Path, PathBuf};
 
 pub fn main() -> IcedResult {
     iced::application("Send to Goodnotes", update, view)
         .centered()
         .window_size(Size::new(800.0, 600.0))
+        .subscription(subscription)
         .run_with(|| {
             let mut state = AppState::default();
 
@@ -42,22 +43,12 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
         ),
         Message::FilesPicked(selection) => {
             if let Some(files) = selection {
-                let mut new_files: Vec<PathBuf> = files
-                    .into_iter()
-                    .filter(|p| {
-                        p.extension().map(|e| e.to_string_lossy().to_lowercase())
-                            == Some("pdf".into())
-                    })
-                    .collect();
-
-                new_files.retain(|f| !state.selected_files.iter().any(|e| e == f));
-
-                for f in &new_files {
-                    state.file_names.push(default_display_name(f));
-                }
-
-                state.selected_files.extend(new_files);
+                add_files_to_state(state, files);
             }
+            Task::none()
+        }
+        Message::FilesDropped(files) => {
+            add_files_to_state(state, files);
             Task::none()
         }
         Message::Send => {
@@ -215,6 +206,25 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
     }
 }
 
+fn add_files_to_state(state: &mut AppState, files: Vec<PathBuf>) -> usize {
+    let mut new_files: Vec<PathBuf> = files
+        .into_iter()
+        .filter(|p| p.extension().map(|e| e.to_string_lossy().to_lowercase()) == Some("pdf".into()))
+        .collect();
+
+    new_files.retain(|f| !state.selected_files.iter().any(|e| e == f));
+
+    let file_count = new_files.len();
+
+    for f in &new_files {
+        state.file_names.push(default_display_name(f));
+    }
+
+    state.selected_files.extend(new_files);
+
+    file_count
+}
+
 fn commit_edit(state: &mut AppState, index: usize) {
     if index < state.file_names.len() {
         let trimmed = state.editing_buffer.trim();
@@ -240,6 +250,16 @@ fn default_display_name(p: &Path) -> String {
         .and_then(|n| n.to_str())
         .unwrap_or("attachment.pdf")
         .to_string()
+}
+
+fn subscription(_state: &AppState) -> Subscription<Message> {
+    iced::event::listen_with(|event, _status, _id| {
+        if let Event::Window(window::Event::FileDropped(path)) = event {
+            Some(Message::FilesDropped(vec![path]))
+        } else {
+            None
+        }
+    })
 }
 
 fn view(state: &AppState) -> iced::Element<'_, Message> {

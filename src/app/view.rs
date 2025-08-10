@@ -146,7 +146,15 @@ fn settings_view(state: &AppState) -> Element<'_, Message> {
 fn main_view(state: &AppState) -> Element<'_, Message> {
     // List of selected files (or placeholder text)
     let files_column = if state.selected_files.is_empty() {
-        column![text("No PDF files selected")]
+        column![
+            text("No PDF files selected"),
+            text("Press 'Open file(s)' or drag and drop PDF files here")
+                .size(14)
+                .style(|_theme: &Theme| text::Style {
+                    color: Some(Color::from_rgb8(150, 150, 150)),
+                })
+        ]
+        .spacing(4)
     } else {
         let mut col = column![];
         for (i, f) in state.selected_files.iter().enumerate() {

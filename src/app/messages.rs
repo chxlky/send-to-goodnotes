@@ -4,6 +4,7 @@ use std::{path::PathBuf, result};
 pub enum Message {
     OpenFiles,
     FilesPicked(Option<Vec<PathBuf>>),
+    FilesDropped(Vec<PathBuf>),
     Send,
     Sent(result::Result<usize, String>),
     Remove(PathBuf),
