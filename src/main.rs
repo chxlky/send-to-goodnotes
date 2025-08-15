@@ -16,8 +16,8 @@ pub fn main() -> IcedResult {
         .run_with(|| {
             let mut state = AppState::default();
 
-            // Initialize config manager and load settings
             let config_manager = config::ConfigManager::new().ok();
+
             #[allow(clippy::collapsible_if)]
             if let Some(ref manager) = config_manager {
                 if let Ok(settings) = manager.load_settings() {
