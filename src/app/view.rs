@@ -281,6 +281,33 @@ fn main_view(state: &AppState) -> Element<'_, Message> {
         send_btn = send_btn.on_press(Message::Send);
     }
 
+    let clear_btn = button(text("Clear")).style(|_theme: &iced::Theme, status| {
+        let base = Color::from_rgb8(0xD9, 0x2F, 0x2F);
+        let hovered = Color::from_rgb8(0xE5, 0x46, 0x46);
+
+        let color = match status {
+            button::Status::Hovered => hovered,
+            _ => base,
+        };
+
+        button::Style {
+            background: Some(Background::Color(color)),
+            text_color: Color::WHITE,
+            border: Border {
+                radius: 4.0.into(),
+                width: 0.0,
+                color: Color::TRANSPARENT,
+            },
+            shadow: Shadow::default(),
+        }
+    });
+
+    let clear_btn = if !state.selected_files.is_empty() {
+        clear_btn.on_press(Message::Clear)
+    } else {
+        clear_btn
+    };
+
     let status_row = if let Some(status) = &state.status {
         let is_error = status.starts_with("Error:") || status.starts_with("Too many");
 
@@ -330,6 +357,7 @@ fn main_view(state: &AppState) -> Element<'_, Message> {
         row![
             open_btn,
             send_btn,
+            clear_btn,
             container(settings_button)
                 .width(Length::Fill)
                 .align_x(Alignment::End)

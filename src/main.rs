@@ -144,6 +144,14 @@ fn update(state: &mut AppState, message: Message) -> Task<Message> {
 
             Task::none()
         }
+        Message::Clear => {
+            state.selected_files.clear();
+            state.file_names.clear();
+            state.editing_index = None;
+            state.editing_buffer.clear();
+            state.status = Some("Files cleared".to_string());
+            Task::none()
+        }
         Message::OpenSettings => {
             state.show_settings = true;
             Task::none()

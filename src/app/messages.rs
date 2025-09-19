@@ -12,6 +12,7 @@ pub enum Message {
     NameChanged(String),
     CommitEdit,
     CancelEdit,
+    Clear,
     OpenSettings,
     CloseSettings,
     SmtpHostChanged(String),
